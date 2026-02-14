@@ -5,7 +5,7 @@ FROM eclipse-temurin:17-jdk
 WORKDIR /app
 
 # Copy source files
-COPY src/*.java ./
+COPY *.java ./
 
 # Compile Java files
 RUN javac *.java
