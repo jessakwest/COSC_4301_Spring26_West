@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  postgres-db:
+    container_name: neon_ark_db
+    image: postgres:16
+    restart: always
+
+    environment:
+      POSTGRES_USER: neonark
+      POSTGRES_PASSWORD: neonarkpass
+      POSTGRES_DB: intake_tracker
+      POSTGRES_HOST_AUTH_METHOD: password
+
+    ports:
+      - "5437:5432"
+
+    volumes:
+      - neonark_pgdata:/var/lib/postgresql/data
+
+volumes:
+  neonark_pgdata:
+    driver: local
