@@ -100,7 +100,7 @@ Results in:
     
     {"timestamp":"2026-03-28T22:45:15.338Z","status":400,"error":"Bad Request","path":"/api/creatures"}%
 
-### Test: Bad Habitat ID
+### Test: Invalid Habitat ID
 curl -i -X POST http://localhost:8080/api/creatures \
 -H "Content-Type: application/json" \
 -d '{
@@ -120,7 +120,7 @@ Results in:
     
     {"timestamp":"2026-03-28T22:45:22.729Z","status":400,"error":"Bad Request","path":"/api/creatures"}%
 
-### Test creature not found with ivalid id
+### Test creature not found with invalid id
 curl -i http://localhost:8080/api/creatures/9999
 
 Results in:
@@ -155,7 +155,6 @@ Fix: Option 1) Drop database and rerun, Option 2) run ./gradlew flywayRepair
 Problem: request not found
 Cause: ID does not exist in the database
 Fix: use a valid ID
-
 
 ## Design Notes
 - DTOs used to prevent exposing database fields to users
