@@ -44,16 +44,4 @@ public class CreatureController {
         CreatureResponse created = service.createCreature(req);
         return ResponseEntity.status(201).body(created);
     }
-
-
-
-//FUTURE EXCEPTION HANDLING
-//    @ExceptionHandler(MethodArgumentNotValidException.class)
-//    @ResponseStatus(HttpStatus.BAD_REQUEST)
-//    public Map<String, String> handleValidationErrors(MethodArgumentNotValidException ex) {
-//        Map<String, String> errors = new HashMap<>();
-//        ex.getBindingResult().getFieldErrors()
-//                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
-//        return errors;
-//    }
 }
