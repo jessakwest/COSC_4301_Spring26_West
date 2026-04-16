@@ -120,7 +120,7 @@ Results in:
     
     {"timestamp":"2026-03-28T22:45:22.729Z","status":400,"error":"Bad Request","path":"/api/creatures"}%
 
-### Test creature not found with ivalid id
+### Test creature not found with invalid id
 curl -i http://localhost:8080/api/creatures/9999
 
 Results in:
@@ -164,7 +164,7 @@ Fix: use a valid ID
 - Validation is enforced using @Valid and annotations
 
 ## Lessons Learned
-- Missing foriegn keys will casue database-level failures even if the code compiles
+- Missing foreign keys will cause database-level failures even if the code compiles
 - Validation errors return 400 automatically when using @Valid
 - Flyway migrations should never be edited after running
 - Debugging logs are critical for identifying real issues and assumptions
