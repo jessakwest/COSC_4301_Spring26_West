@@ -1,266 +1,320 @@
+-- drop selection
+    -- ensures a clean rebuild by removing existing tables, dependencies, functions
+    -- prevents conflicts and makes script repeatable
+DROP TABLE IF EXISTS warden_clearance_history CASCADE;
 DROP TABLE IF EXISTS warden_role_history CASCADE;
 DROP TABLE IF EXISTS warden_status_history CASCADE;
 DROP TABLE IF EXISTS certifications CASCADE;
 DROP TABLE IF EXISTS identifiers CASCADE;
 DROP TABLE IF EXISTS wardens CASCADE;
+
 DROP TABLE IF EXISTS role_aliases CASCADE;
 DROP TABLE IF EXISTS status_aliases CASCADE;
 DROP TABLE IF EXISTS clearance_aliases CASCADE;
 DROP TABLE IF EXISTS identifier_type_aliases CASCADE;
-DROP TABLE IF EXISTS identifier_types CASCADE;
-DROP TABLE IF EXISTS clearance_levels CASCADE;
-DROP TABLE IF EXISTS warden_statuses CASCADE;
+
 DROP TABLE IF EXISTS roles CASCADE;
+DROP TABLE IF EXISTS statuses CASCADE;
+DROP TABLE IF EXISTS clearance_levels CASCADE;
+DROP TABLE IF EXISTS identifier_types CASCADE;
+
+DROP FUNCTION IF EXISTS resolve_lookup;
+DROP FUNCTION IF EXISTS create_warden;
+DROP FUNCTION IF EXISTS terminate_warden;
+DROP FUNCTION IF EXISTS mark_cert_expired;
 
 -- lookup tables
-CREATE TABLE roles(
-                      role_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                      role_name VARCHAR(255) NOT NULL UNIQUE
+    -- enforces consistency across the system using foreign keys
+    -- allows for controlled expansion with breaking existing data
+CREATE TABLE roles (
+    role_id SERIAL PRIMARY KEY,
+    role_name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE warden_statuses(
-                                status_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                status_name VARCHAR(255) NOT NULL UNIQUE
+CREATE TABLE statuses (
+    status_id SERIAL PRIMARY KEY,
+    status_name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE clearance_levels(
-                                 clearance_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                 clearance_name VARCHAR(255) NOT NULL UNIQUE
+CREATE TABLE clearance_levels (
+    clearance_id SERIAL PRIMARY KEY,
+    clearance_name TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE identifier_types(
-                                 id_type_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                 type_name VARCHAR(255) NOT NULL UNIQUE
+CREATE TABLE identifier_types (
+    id_type_id SERIAL PRIMARY KEY,
+    type_name TEXT NOT NULL UNIQUE
 );
 
 -- alias tables
-CREATE TABLE role_aliases(
-                             alias_name VARCHAR(255) PRIMARY KEY,
-                             role_id INTEGER NOT NULL REFERENCES roles(role_id)
+    -- map free-text input to values in the lookup tables
+    -- supports flexibility while preventing  duplicates, inconsistencies
+CREATE TABLE role_aliases (
+    alias_name TEXT PRIMARY KEY,
+    role_id INT NOT NULL REFERENCES roles(role_id)
 );
 
-CREATE TABLE status_aliases(
-                               alias_name VARCHAR(255) PRIMARY KEY,
-                               status_id INTEGER NOT NULL REFERENCES warden_statuses(status_id)
+CREATE TABLE status_aliases (
+    alias_name TEXT PRIMARY KEY,
+    status_id INT NOT NULL REFERENCES statuses(status_id)
 );
 
-CREATE TABLE clearance_aliases(
-                                  alias_name VARCHAR(255) PRIMARY KEY,
-                                  clearance_id INTEGER NOT NULL REFERENCES clearance_levels(clearance_id)
+CREATE TABLE clearance_aliases (
+    alias_name TEXT PRIMARY KEY,
+    clearance_id INT NOT NULL REFERENCES clearance_levels(clearance_id)
 );
 
-CREATE TABLE identifier_type_aliases(
-                                        alias_name VARCHAR(255) PRIMARY KEY,
-                                        id_type_id INTEGER NOT NULL REFERENCES identifier_types(id_type_id)
+CREATE TABLE identifier_type_aliases (
+    alias_name TEXT PRIMARY KEY,
+    id_type_id INT NOT NULL REFERENCES identifier_types(id_type_id)
 );
 
--- core
-CREATE TABLE wardens(
-                        warden_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                        first_name VARCHAR(255) NOT NULL,
-                        last_name VARCHAR(255),
-                        email VARCHAR(255) NOT NULL UNIQUE,
-                        role_id INTEGER NOT NULL REFERENCES roles(role_id),
-                        clearance_id INTEGER NOT NULL REFERENCES clearance_levels(clearance_id)
+-- core table
+    -- stores primary identity and contact information
+    -- keeps entity minimal, stable by separating static fields from changing attributes
+CREATE TABLE wardens (
+    warden_id SERIAL PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT,
+    email TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE identifiers(
-                            identifier_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                            warden_id INTEGER NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
-                            id_type_id INTEGER NOT NULL REFERENCES identifier_types(id_type_id),
-                            id_value VARCHAR(255) NOT NULL,
-                            UNIQUE(id_type_id, id_value),
-                            UNIQUE(warden_id, id_type_id)
+-- identifiers table
+    -- enforces global uniqueness for identifier values
+    -- supports multiple identifier systems
+CREATE TABLE identifiers (
+    identifier_id SERIAL PRIMARY KEY,
+    warden_id INT NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
+    id_type_id INT NOT NULL REFERENCES identifier_types(id_type_id),
+    id_value TEXT NOT NULL,
+    UNIQUE(id_type_id, id_value)
 );
 
-CREATE TABLE certifications(
-                               certification_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                               warden_id INTEGER NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
-                               certification_name VARCHAR(255) NOT NULL,
-                               date_earned DATE NOT NULL,
-                               expiration_date DATE,
-                               UNIQUE(warden_id, certification_name, date_earned)
+-- certifications table
+    -- supports multiple certifications per warden
+    -- tracks qualifications earned, dates, expiration
+CREATE TABLE certifications (
+    certification_id SERIAL PRIMARY KEY,
+    warden_id INT NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
+    certification_name TEXT NOT NULL,
+    date_earned DATE NOT NULL,
+    expiration_date DATE,
+    is_expired BOOLEAN NOT NULL DEFAULT FALSE,
+    UNIQUE(warden_id, certification_name, date_earned)
 );
 
-CREATE TABLE warden_status_history(
-                                      status_history_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                      warden_id INTEGER NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
-                                      status_id INTEGER NOT NULL REFERENCES warden_statuses(status_id),
-                                      start_date DATE NOT NULL,
-                                      end_date DATE
+-- history tables
+    -- supports time-based queries and auditing
+    -- records changing data, instead of overwriting it
+CREATE TABLE warden_status_history (
+    id SERIAL PRIMARY KEY,
+    warden_id INT NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
+    status_id INT NOT NULL REFERENCES statuses(status_id),
+    start_date DATE NOT NULL,
+    end_date DATE,
+    CHECK (end_date IS NULL OR end_date >= start_date)
 );
 
-CREATE TABLE warden_role_history(
-                                    role_history_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                                    warden_id INTEGER NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
-                                    role_id INTEGER NOT NULL REFERENCES roles(role_id),
-                                    start_date DATE NOT NULL,
-                                    end_date DATE
+CREATE TABLE warden_role_history (
+    id SERIAL PRIMARY KEY,
+    warden_id INT NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
+    role_id INT NOT NULL REFERENCES roles(role_id),
+    start_date DATE NOT NULL,
+    end_date DATE,
+    CHECK (end_date IS NULL OR end_date >= start_date)
 );
 
-CREATE UNIQUE INDEX uq_one_active_status_per_warden
-    ON warden_status_history(warden_id) WHERE end_date IS NULL;
+CREATE TABLE warden_clearance_history (
+    id SERIAL PRIMARY KEY,
+    warden_id INT NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
+    clearance_id INT NOT NULL REFERENCES clearance_levels(clearance_id),
+    start_date DATE NOT NULL,
+    end_date DATE,
+    CHECK (end_date IS NULL OR end_date >= start_date)
+);
 
-CREATE UNIQUE INDEX uq_one_active_role_per_warden
-    ON warden_role_history(warden_id) WHERE end_date IS NULL;
+-- indexes: active record enforcement
+    -- ensures only one current active record per warden_id
+    -- prevents conflicting or overlapping states
+CREATE UNIQUE INDEX one_active_status
+ON warden_status_history(warden_id)
+WHERE end_date IS NULL;
 
--- normalization + alias resolution
-CREATE OR REPLACE FUNCTION normalize_and_resolve()
-RETURNS TRIGGER AS $$
-DECLARE
-resolved_id INTEGER;
+CREATE UNIQUE INDEX one_active_role
+ON warden_role_history(warden_id)
+WHERE end_date IS NULL;
+
+CREATE UNIQUE INDEX one_active_clearance
+ON warden_clearance_history(warden_id)
+WHERE end_date IS NULL;
+
+-- normalization / resolve function
+    -- prevents invalid, inconsistent data from being inserted
+    -- uses alias tables to standardize input
+    -- converts free-text input into valid IDs
+CREATE OR REPLACE FUNCTION resolve_lookup(input TEXT, type TEXT)
+RETURNS INT AS $$
+DECLARE id INT;
 BEGIN
-    IF TG_TABLE_NAME = 'roles' THEN
-        NEW.role_name := LOWER(NEW.role_name);
+    input := LOWER(TRIM(input));
 
-    ELSIF TG_TABLE_NAME = 'warden_statuses' THEN
-        NEW.status_name := LOWER(NEW.status_name);
+    IF type = 'role' THEN
+        SELECT role_id INTO id FROM roles WHERE role_name = input;
+        IF id IS NULL THEN
+            SELECT role_id INTO id FROM role_aliases WHERE alias_name = input;
+        END IF;
 
-    ELSIF TG_TABLE_NAME = 'clearance_levels' THEN
-        NEW.clearance_name := LOWER(NEW.clearance_name);
+    ELSIF type = 'status' THEN
+        SELECT status_id INTO id FROM statuses WHERE status_name = input;
+        IF id IS NULL THEN
+            SELECT status_id INTO id FROM status_aliases WHERE alias_name = input;
+        END IF;
 
-    ELSIF TG_TABLE_NAME = 'identifier_types' THEN
-        NEW.type_name := LOWER(NEW.type_name);
+    ELSIF type = 'clearance' THEN
+        SELECT clearance_id INTO id FROM clearance_levels WHERE clearance_name = input;
+        IF id IS NULL THEN
+            SELECT clearance_id INTO id FROM clearance_aliases WHERE alias_name = input;
+        END IF;
 
-    ELSIF TG_TABLE_NAME = 'role_aliases' THEN
-        NEW.alias_name := LOWER(NEW.alias_name);
+    ELSIF type = 'id_type' THEN
+        SELECT id_type_id INTO id FROM identifier_types WHERE type_name = input;
+        IF id IS NULL THEN
+            SELECT id_type_id INTO id FROM identifier_type_aliases WHERE alias_name = input;
+        END IF;
+    END IF;
 
-    ELSIF TG_TABLE_NAME = 'status_aliases' THEN
-        NEW.alias_name := LOWER(NEW.alias_name);
+    IF id IS NULL THEN
+        RAISE EXCEPTION 'Invalid %: %', type, input;
+    END IF;
 
-    ELSIF TG_TABLE_NAME = 'clearance_aliases' THEN
-        NEW.alias_name := LOWER(NEW.alias_name);
-
-    ELSIF TG_TABLE_NAME = 'identifier_type_aliases' THEN
-        NEW.alias_name := LOWER(NEW.alias_name);
-
-    ELSIF TG_TABLE_NAME = 'wardens' THEN
-        NEW.first_name := LOWER(NEW.first_name);
-        IF NEW.last_name IS NOT NULL THEN
-            NEW.last_name := LOWER(NEW.last_name);
-END IF;
-        NEW.email := LOWER(NEW.email);
-
-    ELSIF TG_TABLE_NAME = 'certifications' THEN
-        NEW.certification_name := LOWER(NEW.certification_name);
-
-    ELSIF TG_TABLE_NAME = 'identifiers' THEN
-        NEW.id_value := UPPER(NEW.id_value);
-END IF;
-
-RETURN NEW;
+    RETURN id;
 END;
 $$ LANGUAGE plpgsql;
 
--- attach triggers
-CREATE TRIGGER trg_roles BEFORE INSERT OR UPDATE ON roles FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_statuses BEFORE INSERT OR UPDATE ON warden_statuses FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_clearance BEFORE INSERT OR UPDATE ON clearance_levels FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_idtypes BEFORE INSERT OR UPDATE ON identifier_types FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
+-- create warden function
+   -- centralizes logic for onboarding a new warden
+   -- ensures required data is created together
+   -- enforces normalization, standardization, data integrity
+CREATE OR REPLACE FUNCTION create_warden(
+    p_first TEXT,
+    p_last TEXT,
+    p_email TEXT,
+    p_role TEXT,
+    p_status TEXT,
+    p_clearance TEXT,
+    p_id_type TEXT,
+    p_id_value TEXT,
+    p_start DATE
+) RETURNS INT AS $$
+DECLARE wid INT;
+DECLARE role_id INT;
+DECLARE status_id INT;
+DECLARE clearance_id INT;
+DECLARE id_type_id INT;
+BEGIN
+    INSERT INTO wardens(first_name, last_name, email)
+    VALUES (LOWER(TRIM(p_first)), LOWER(TRIM(p_last)), LOWER(TRIM(p_email)))
+    RETURNING warden_id INTO wid;
 
-CREATE TRIGGER trg_role_alias BEFORE INSERT OR UPDATE ON role_aliases FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_status_alias BEFORE INSERT OR UPDATE ON status_aliases FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_clearance_alias BEFORE INSERT OR UPDATE ON clearance_aliases FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_idtype_alias BEFORE INSERT OR UPDATE ON identifier_type_aliases FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
+    role_id := resolve_lookup(p_role, 'role');
+    status_id := resolve_lookup(p_status, 'status');
+    clearance_id := resolve_lookup(p_clearance, 'clearance');
+    id_type_id := resolve_lookup(p_id_type, 'id_type');
 
-CREATE TRIGGER trg_wardens BEFORE INSERT OR UPDATE ON wardens FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_certs BEFORE INSERT OR UPDATE ON certifications FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
-CREATE TRIGGER trg_identifiers BEFORE INSERT OR UPDATE ON identifiers FOR EACH ROW EXECUTE FUNCTION normalize_and_resolve();
+    INSERT INTO identifiers VALUES (DEFAULT, wid, id_type_id, UPPER(TRIM(p_id_value)));
 
--- seed data
-INSERT INTO roles (role_name) VALUES
-                                  ('admin'), ('field'), ('rift'), ('trainer'), ('astral');
+    INSERT INTO warden_role_history VALUES (DEFAULT, wid, role_id, p_start, NULL);
+    INSERT INTO warden_status_history VALUES (DEFAULT, wid, status_id, p_start, NULL);
+    INSERT INTO warden_clearance_history VALUES (DEFAULT, wid, clearance_id, p_start, NULL);
 
-INSERT INTO warden_statuses (status_name) VALUES
-                                              ('active'), ('on leave'), ('terminated');
+    RETURN wid;
+END;
+$$ LANGUAGE plpgsql;
 
-INSERT INTO clearance_levels (clearance_name) VALUES
-                                                  ('alpha'), ('omega'), ('beta');
+-- terminate warden function
+   -- centralizes logic for terminating warden
+   -- enforces consistent termination behavior
+   -- updates status, keeps record/history
+CREATE OR REPLACE FUNCTION terminate_warden(
+    p_warden INT,
+    p_status TEXT,
+    p_date DATE
+) RETURNS VOID AS $$
+DECLARE sid INT;
+BEGIN
+    sid := resolve_lookup(p_status, 'status');
 
-INSERT INTO identifier_types (type_name) VALUES
-                                             ('badge'), ('passport'), ('visa');
+    UPDATE warden_status_history
+    SET end_date = p_date
+    WHERE warden_id = p_warden AND end_date IS NULL;
 
--- optional aliases
-INSERT INTO role_aliases (alias_name, role_id) VALUES
-                                                   ('administrator',1), ('field agent',2), ('rift agent',3);
+    INSERT INTO warden_status_history
+    VALUES (DEFAULT, p_warden, sid, p_date, NULL);
+END;
+$$ LANGUAGE plpgsql;
 
-INSERT INTO status_aliases (alias_name, status_id) VALUES
-                                                       ('working',1), ('leave',2), ('fired',3);
+-- certification expired function
+   -- supports lifecycle tracking of qualifications
+   -- keeps historical data by marking as expired without deleting them
+CREATE OR REPLACE FUNCTION mark_cert_expired(p_id INT)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE certifications SET is_expired = TRUE WHERE certification_id = p_id;
+END;
+$$ LANGUAGE plpgsql;
 
-INSERT INTO clearance_aliases (alias_name, clearance_id) VALUES
-                                                             ('a',1), ('o',2), ('b',3);
+-- seed lookups
+   -- pre-populates required standard values
+   -- prevents invalid inserts due to missing reference data
+   -- ensures system is usable immediately after setup
+INSERT INTO roles(role_name) VALUES
+('admin'),('field'),('rift'),('trainer'),('astral');
 
-INSERT INTO identifier_type_aliases (alias_name, id_type_id) VALUES
-                                                                 ('id',1), ('pass',2);
+INSERT INTO statuses(status_name) VALUES
+('active'),('onleave'),('terminated');
 
--- wardens
-INSERT INTO wardens (first_name, last_name, email, role_id, clearance_id) VALUES
-                                                                              ('Alice','Carter','alice.carter@example.com',1,2),
-                                                                              ('Brian','Lopez','brian.lopez@example.com',2,3),
-                                                                              ('Chloe','Nguyen','chloe.nguyen@example.com',1,1),
-                                                                              ('David','Kim','david.kim@example.com',3,1),
-                                                                              ('Emma','Stone','emma.stone@example.com',2,2),
-                                                                              ('Frank','Wright','frank.wright@example.com',1,1),
-                                                                              ('Grace','Hall','grace.hall@example.com',2,2),
-                                                                              ('Henry','Adams','henry.adams@example.com',1,1),
-                                                                              ('Isla','Turner','isla.turner@example.com',3,3),
-                                                                              ('Jack','Evans','jack.evans@example.com',2,2);
+INSERT INTO clearance_levels(clearance_name) VALUES
+('alpha'),('omega'),('eclipse');
 
-INSERT INTO identifiers (warden_id, id_type_id, id_value) VALUES
-                                                              (1,1,'B-1001'),
-                                                              (2,1,'B-1002'),
-                                                              (3,2,'NID-2003'),
-                                                              (4,1,'B-1004'),
-                                                              (5,3,'P-3005'),
-                                                              (6,2,'NID-2006'),
-                                                              (7,1,'B-1007'),
-                                                              (8,3,'P-3008'),
-                                                              (9,1,'B-1009'),
-                                                              (10,2,'NID-2010');
+INSERT INTO identifier_types(type_name) VALUES
+('badge'),('passport'),('visa');
 
-INSERT INTO certifications (warden_id, certification_name, date_earned, expiration_date) VALUES
-                                                                                             (1,'first aid','2022-01-10','2025-01-10'),
-                                                                                             (1,'fire safety','2021-05-20','2024-05-20'),
-                                                                                             (2,'advanced tracking','2023-03-15','2026-03-15'),
-                                                                                             (3,'first aid','2020-07-01','2023-07-01'),
-                                                                                             (4,'leadership training','2022-09-10','2025-09-10'),
-                                                                                             (4,'crisis management','2023-02-01','2026-02-01'),
-                                                                                             (5,'fire safety','2021-11-11','2024-11-11'),
-                                                                                             (6,'basic training','2020-01-01','2023-01-01'),
-                                                                                             (7,'advanced tracking','2023-06-06','2026-06-06'),
-                                                                                             (8,'first aid','2019-04-04','2022-04-04'),
-                                                                                             (9,'leadership training','2022-08-08','2025-08-08'),
-                                                                                             (10,'fire safety','2023-01-01','2026-01-01');
+-- seed aliases
+    -- esnures
+INSERT INTO role_aliases VALUES
+('administrator',1),('field agent',2);
 
-INSERT INTO warden_status_history (warden_id, status_id, start_date, end_date) VALUES
-                                                                                   (1,1,'2022-01-01',NULL),
-                                                                                   (2,1,'2021-05-01',NULL),
-                                                                                   (3,2,'2023-01-01',NULL),
-                                                                                   (4,1,'2020-03-01',NULL),
-                                                                                   (5,1,'2022-06-01',NULL),
-                                                                                   (6,3,'2023-02-01',NULL),
-                                                                                   (7,1,'2021-09-01',NULL),
-                                                                                   (8,3,'2020-01-01',NULL),
-                                                                                   (9,1,'2022-11-01',NULL),
-                                                                                   (10,1,'2023-04-01',NULL);
+INSERT INTO status_aliases VALUES
+('on leave',2),('inactive',3);
 
-INSERT INTO warden_role_history (warden_id, role_id, start_date, end_date) VALUES
-                                                                               (1,1,'2022-01-01',NULL),
-                                                                               (2,2,'2021-05-01',NULL),
-                                                                               (3,1,'2023-01-01',NULL),
-                                                                               (4,3,'2020-03-01',NULL),
-                                                                               (5,2,'2022-06-01',NULL),
-                                                                               (6,1,'2020-01-01',NULL),
-                                                                               (7,2,'2021-09-01',NULL),
-                                                                               (8,1,'2020-01-01',NULL),
-                                                                               (9,3,'2022-11-01',NULL),
-                                                                               (10,2,'2023-04-01',NULL);
+INSERT INTO clearance_aliases VALUES
+('a',1),('o',2);
 
-UPDATE warden_status_history SET end_date = '2024-02-12' WHERE warden_id = 6 AND status_id = 3 AND end_date IS NULL;
-UPDATE warden_status_history SET end_date = '2024-01-01' WHERE warden_id = 3 AND end_date IS NULL;
-INSERT INTO warden_status_history (warden_id, status_id, start_date, end_date)
-VALUES (3,2,'2024-01-02',NULL);
+INSERT INTO identifier_type_aliases VALUES
+('id',1),('pass',2);
 
-UPDATE warden_role_history SET end_date = '2023-12-31' WHERE warden_id = 2 AND end_date IS NULL;
-INSERT INTO warden_role_history (warden_id, role_id, start_date, end_date)
-VALUES (2,1,'2024-01-01',NULL);
+-- sample data for 10 warden entries
+    -- demonstrates the system works end to end
+    -- confirms the database builds and runs without error
+SELECT create_warden('alice','carter','alice@test.com','admin','active','alpha','badge','B1001','2022-01-01');
+SELECT create_warden('brian','lopez','brian@test.com','field','active','omega','badge','B1002','2022-02-01');
+SELECT create_warden('chloe',NULL,'chloe@test.com','rift','onleave','alpha','passport','P2001','2023-01-01');
+SELECT create_warden('david','kim','david@test.com','trainer','active','eclipse','visa','V3001','2021-03-01');
+SELECT create_warden('emma','stone','emma@test.com','field','active','omega','badge','B1005','2022-06-01');
+SELECT create_warden('frank','wright','frank@test.com','admin','active','alpha','passport','P2006','2020-01-01');
+SELECT create_warden('grace','hall','grace@test.com','trainer','active','omega','badge','B1007','2021-09-01');
+SELECT create_warden('henry','adams','henry@test.com','admin','active','alpha','visa','V3008','2020-01-01');
+SELECT create_warden('isla','turner','isla@test.com','rift','active','eclipse','badge','B1009','2022-11-01');
+SELECT create_warden('jack','evans','jack@test.com','field','active','omega','passport','P2010','2023-04-01');
+
+-- terminate one warden as example
+SELECT terminate_warden(6,'terminated','2023-01-01');
+
+-- sample data for certifications
+INSERT INTO certifications (warden_id, certification_name, date_earned, expiration_date)
+VALUES
+(1,'first aid','2022-01-10','2025-01-10'),
+(1,'fire safety','2021-05-20','2024-05-20'),
+(2,'advanced tracking','2023-03-15','2026-03-15'),
+(3,'first aid','2020-07-01','2023-07-01'),
+(4,'leadership training','2022-09-10','2025-09-10');
