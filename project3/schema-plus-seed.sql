@@ -532,7 +532,7 @@ SELECT create_warden('jack','evans','jack@test.com','field','active','omega','pa
 
 -- terminate one warden as example
 SELECT terminate_warden(6, '2023-01-01');
-SELECT deactivate_warden(9, '2021-11-11');
+SELECT deactivate_warden(9, '2023-11-11');
 
 -- sample data for certifications
 INSERT INTO certifications (warden_id, certification_name, date_earned, expiration_date)
