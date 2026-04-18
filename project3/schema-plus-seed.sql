@@ -18,14 +18,21 @@ DROP TABLE IF EXISTS statuses CASCADE;
 DROP TABLE IF EXISTS clearance_levels CASCADE;
 DROP TABLE IF EXISTS identifier_types CASCADE;
 
-DROP FUNCTION IF EXISTS resolve_lookup;
-DROP FUNCTION IF EXISTS create_warden;
-DROP FUNCTION IF EXISTS terminate_warden;
-DROP FUNCTION IF EXISTS mark_cert_expired;
+DROP FUNCTION IF EXISTS resolve_lookup(TEXT, TEXT);
+DROP FUNCTION IF EXISTS create_warden(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, DATE);
+DROP FUNCTION IF EXISTS deactivate_warden(INT, DATE);
+DROP FUNCTION IF EXISTS terminate_warden(INT, DATE);
+DROP FUNCTION IF EXISTS update_status(INT, TEXT, DATE);
+DROP FUNCTION IF EXISTS update_role(INT, TEXT, DATE);
+DROP FUNCTION IF EXISTS update_clearance(INT, TEXT, DATE);
+DROP FUNCTION IF EXISTS view_all_wardens();
+DROP FUNCTION IF EXISTS view_warden_by_id(INT);
+DROP FUNCTION IF EXISTS view_wardens_by_role(TEXT);
+DROP FUNCTION IF EXISTS view_wardens_by_status(TEXT);
 
 -- lookup tables
     -- enforces consistency across the system using foreign keys
-    -- allows for controlled expansion with breaking existing data
+    -- allows for controlled expansion without breaking existing data
 CREATE TABLE roles (
     role_id SERIAL PRIMARY KEY,
     role_name TEXT NOT NULL UNIQUE
@@ -82,12 +89,14 @@ CREATE TABLE wardens (
 -- identifiers table
     -- enforces global uniqueness for identifier values
     -- supports multiple identifier systems
+    -- supports 1 warden to have one per type ID
 CREATE TABLE identifiers (
     identifier_id SERIAL PRIMARY KEY,
     warden_id INT NOT NULL REFERENCES wardens(warden_id) ON DELETE CASCADE,
     id_type_id INT NOT NULL REFERENCES identifier_types(id_type_id),
     id_value TEXT NOT NULL,
-    UNIQUE(id_type_id, id_value)
+    UNIQUE(id_type_id, id_value),
+    UNIQUE(warden_id, id_type_id)
 );
 
 -- certifications table
@@ -231,22 +240,42 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- terminate warden function
-   -- centralizes logic for terminating warden
-   -- enforces consistent termination behavior
+-- deactivate warden function
+   -- centralizes logic and enforces consistency
    -- updates status, keeps record/history
-CREATE OR REPLACE FUNCTION terminate_warden(
+CREATE OR REPLACE FUNCTION deactivate_warden(
     p_warden INT,
-    p_status TEXT,
     p_date DATE
 ) RETURNS VOID AS $$
 DECLARE sid INT;
 BEGIN
-    sid := resolve_lookup(p_status, 'status');
+    sid := resolve_lookup('onleave', 'status');
 
     UPDATE warden_status_history
     SET end_date = p_date
-    WHERE warden_id = p_warden AND end_date IS NULL;
+    WHERE warden_id = p_warden
+      AND end_date IS NULL;
+
+    INSERT INTO warden_status_history
+    VALUES (DEFAULT, p_warden, sid, p_date, NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+-- terminate warden function
+   -- centralizes logic, enforces consistent termination behavior
+   -- updates status, keeps record/history
+CREATE OR REPLACE FUNCTION terminate_warden(
+    p_warden INT,
+    p_date DATE
+) RETURNS VOID AS $$
+DECLARE sid INT;
+BEGIN
+    sid := resolve_lookup('terminated', 'status');
+
+    UPDATE warden_status_history
+    SET end_date = p_date
+    WHERE warden_id = p_warden
+      AND end_date IS NULL;
 
     INSERT INTO warden_status_history
     VALUES (DEFAULT, p_warden, sid, p_date, NULL);
@@ -260,6 +289,198 @@ CREATE OR REPLACE FUNCTION mark_cert_expired(p_id INT)
 RETURNS VOID AS $$
 BEGIN
     UPDATE certifications SET is_expired = TRUE WHERE certification_id = p_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- functions to update fields
+    -- controls the updates to keep data consistency across all tables
+CREATE OR REPLACE FUNCTION update_status(
+    p_warden INT,
+    p_status TEXT,
+    p_date DATE
+) RETURNS VOID AS $$
+DECLARE sid INT;
+BEGIN
+    sid := resolve_lookup(p_status, 'status');
+
+    UPDATE warden_status_history
+    SET end_date = p_date
+    WHERE warden_id = p_warden
+      AND end_date IS NULL;
+
+    INSERT INTO warden_status_history
+    VALUES (DEFAULT, p_warden, sid, p_date, NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_role(
+    p_warden INT,
+    p_role TEXT,
+    p_date DATE
+) RETURNS VOID AS $$
+DECLARE rid INT;
+BEGIN
+    rid := resolve_lookup(p_role, 'role');
+
+    UPDATE warden_role_history
+    SET end_date = p_date
+    WHERE warden_id = p_warden AND end_date IS NULL;
+
+    INSERT INTO warden_role_history
+    VALUES (DEFAULT, p_warden, rid, p_date, NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_clearance(
+    p_warden INT,
+    p_clearance TEXT,
+    p_date DATE
+) RETURNS VOID AS $$
+DECLARE cid INT;
+BEGIN
+    cid := resolve_lookup(p_clearance, 'clearance');
+
+    UPDATE warden_clearance_history
+    SET end_date = p_date
+    WHERE warden_id = p_warden
+      AND end_date IS NULL;
+
+    INSERT INTO warden_clearance_history
+    VALUES (DEFAULT, p_warden, cid, p_date, NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+-- functions to view
+   -- enforces consistency by preventing direct table access
+   -- aligns with menu actions
+CREATE OR REPLACE FUNCTION view_all_wardens()
+RETURNS TABLE (
+    warden_id INT,
+    first_name TEXT,
+    last_name TEXT,
+    email TEXT,
+    role TEXT,
+    status TEXT,
+    clearance TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        w.warden_id,
+        w.first_name,
+        w.last_name,
+        w.email,
+        r.role_name,
+        s.status_name,
+        c.clearance_name
+    FROM wardens w
+    LEFT JOIN warden_role_history wrh
+        ON w.warden_id = wrh.warden_id AND wrh.end_date IS NULL
+    LEFT JOIN roles r ON wrh.role_id = r.role_id
+    LEFT JOIN warden_status_history wsh
+        ON w.warden_id = wsh.warden_id AND wsh.end_date IS NULL
+    LEFT JOIN statuses s ON wsh.status_id = s.status_id
+    LEFT JOIN warden_clearance_history wch
+        ON w.warden_id = wch.warden_id AND wch.end_date IS NULL
+    LEFT JOIN clearance_levels c ON wch.clearance_id = c.clearance_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION view_warden_by_id(p_id INT)
+RETURNS TABLE (
+    warden_id INT,
+    first_name TEXT,
+    last_name TEXT,
+    email TEXT,
+    role TEXT,
+    status TEXT,
+    clearance TEXT,
+    certification_name TEXT,
+    date_earned DATE,
+    expiration_date DATE,
+    is_expired BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        w.warden_id,
+        w.first_name,
+        w.last_name,
+        w.email,
+        r.role_name,
+        s.status_name,
+        c.clearance_name,
+        cert.certification_name,
+        cert.date_earned,
+        cert.expiration_date,
+        cert.is_expired
+    FROM wardens w
+    LEFT JOIN warden_role_history wrh
+        ON w.warden_id = wrh.warden_id AND wrh.end_date IS NULL
+    LEFT JOIN roles r ON wrh.role_id = r.role_id
+    LEFT JOIN warden_status_history wsh
+        ON w.warden_id = wsh.warden_id AND wsh.end_date IS NULL
+    LEFT JOIN statuses s ON wsh.status_id = s.status_id
+    LEFT JOIN warden_clearance_history wch
+        ON w.warden_id = wch.warden_id AND wch.end_date IS NULL
+    LEFT JOIN clearance_levels c ON wch.clearance_id = c.clearance_id
+    LEFT JOIN certifications cert
+        ON w.warden_id = cert.warden_id
+    WHERE w.warden_id = p_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION view_wardens_by_role(p_role TEXT)
+RETURNS TABLE (
+    warden_id INT,
+    first_name TEXT,
+    last_name TEXT,
+    email TEXT,
+    role TEXT
+) AS $$
+DECLARE rid INT;
+BEGIN
+    rid := resolve_lookup(p_role, 'role');
+
+    RETURN QUERY
+    SELECT
+        w.warden_id,
+        w.first_name,
+        w.last_name,
+        w.email,
+        r.role_name
+    FROM wardens w
+    JOIN warden_role_history wrh
+        ON w.warden_id = wrh.warden_id AND wrh.end_date IS NULL
+    JOIN roles r ON wrh.role_id = r.role_id
+    WHERE wrh.role_id = rid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION view_wardens_by_status(p_status TEXT)
+RETURNS TABLE (
+    warden_id INT,
+    first_name TEXT,
+    last_name TEXT,
+    email TEXT,
+    status TEXT
+) AS $$
+DECLARE sid INT;
+BEGIN
+    sid := resolve_lookup(p_status, 'status');
+
+    RETURN QUERY
+    SELECT
+        w.warden_id,
+        w.first_name,
+        w.last_name,
+        w.email,
+        s.status_name
+    FROM wardens w
+    JOIN warden_status_history wsh
+        ON w.warden_id = wsh.warden_id AND wsh.end_date IS NULL
+    JOIN statuses s ON wsh.status_id = s.status_id
+    WHERE wsh.status_id = sid;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -280,7 +501,9 @@ INSERT INTO identifier_types(type_name) VALUES
 ('badge'),('passport'),('visa');
 
 -- seed aliases
-    -- esnures
+    -- provides common alternative user inputs
+    -- ensures free text menu inputs is correctly resolved without breaking consistency
+    -- demonstrates that the alias resolution system is functional
 INSERT INTO role_aliases VALUES
 ('administrator',1),('field agent',2);
 
@@ -308,7 +531,8 @@ SELECT create_warden('isla','turner','isla@test.com','rift','active','eclipse','
 SELECT create_warden('jack','evans','jack@test.com','field','active','omega','passport','P2010','2023-04-01');
 
 -- terminate one warden as example
-SELECT terminate_warden(6,'terminated','2023-01-01');
+SELECT terminate_warden(6, '2023-01-01');
+SELECT deactivate_warden(9, '2021-11-11');
 
 -- sample data for certifications
 INSERT INTO certifications (warden_id, certification_name, date_earned, expiration_date)
@@ -318,3 +542,33 @@ VALUES
 (2,'advanced tracking','2023-03-15','2026-03-15'),
 (3,'first aid','2020-07-01','2023-07-01'),
 (4,'leadership training','2022-09-10','2025-09-10');
+
+-- permissions and access control
+    -- removes direct, allows read access, allows use of controlled functions
+    -- promotes data integrity by preventing users from entering directly into the tables
+    -- must be final section to ensure sample data inserts don't fail
+
+REVOKE INSERT, UPDATE, DELETE ON wardens FROM PUBLIC;
+REVOKE INSERT, UPDATE, DELETE ON identifiers FROM PUBLIC;
+REVOKE INSERT, UPDATE, DELETE ON warden_role_history FROM PUBLIC;
+REVOKE INSERT, UPDATE, DELETE ON warden_status_history FROM PUBLIC;
+REVOKE INSERT, UPDATE, DELETE ON warden_clearance_history FROM PUBLIC;
+
+GRANT SELECT ON wardens TO PUBLIC;
+GRANT SELECT ON identifiers TO PUBLIC;
+GRANT SELECT ON certifications TO PUBLIC;
+GRANT SELECT ON warden_role_history TO PUBLIC;
+GRANT SELECT ON warden_status_history TO PUBLIC;
+GRANT SELECT ON warden_clearance_history TO PUBLIC;
+
+GRANT EXECUTE ON FUNCTION create_warden(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, DATE) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION deactivate_warden(INT, DATE) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION terminate_warden(INT, DATE) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION update_role(INT, TEXT, DATE) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION update_status(INT, TEXT, DATE) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION update_clearance(INT, TEXT, DATE) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION mark_cert_expired(INT) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION view_all_wardens() TO PUBLIC;
+GRANT EXECUTE ON FUNCTION view_warden_by_id(INT) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION view_wardens_by_role(TEXT) TO PUBLIC;
+GRANT EXECUTE ON FUNCTION view_wardens_by_status(TEXT) TO PUBLIC;
