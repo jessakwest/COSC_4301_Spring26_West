@@ -1,0 +1,21 @@
+id,name,role,status,clearance
+101,Jordan Reyes,Caretaker,Active,Alpha
+102,Avery Chen,Security,Active,Alpha
+103,Liam Patel,Field,OnLeave,Omega
+104,Sophia Martinez,Xenobiologist,Active,Omega
+105,Noah Kim,Security,Terminated,Eclipse
+106,Emma Johnson,Caretaker,Active,Eclipse
+107,Lucas Brown,Field,Retired,Eclipse
+108,Olivia Davis,Xenobiologist,Active,Alpha
+109,Ethan Wilson,Security,Inactive,Eclipse
+110,Mia Anderson,Caretaker,Retired,Omega
+111,James Thomas,Field,Active,Omega
+112,Isabella Moore,Xenobiologist,OnLeave,Omega
+113,Benjamin Taylor,Security,Active,Omega
+114,Charlotte Jackson,Caretaker,OnLeave,Eclipse
+115,Henry White,Field,Active,Alpha
+116,Amelia Harris,Xenobiologist,Terminated,Alpha
+117,Alexander Martin,Security,Active,Eclipse
+118,Evelyn Thompson,Caretaker,OnLeave,Omega
+119,Daniel Garcia,Field,Active,Omega
+120,Harper Clark,Xenobiologist,Active,Alpha
