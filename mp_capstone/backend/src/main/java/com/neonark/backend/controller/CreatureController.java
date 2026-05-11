@@ -20,11 +20,10 @@ public class CreatureController {
 
     private final CreatureService creatureService;
 
-
-    //route 1: GET /api/creatures -- all *active* creatures
+    //route 1.a and 1.b: GET /api/creatures?includeRemoved=true -- get all creatures including removed or only active
     @GetMapping
-    public ResponseEntity<List<CreatureResponse>> getAllCreatures() {
-        return ResponseEntity.ok(creatureService.getAllCreatures());
+    public ResponseEntity<List<CreatureResponse>> getAllCreatures(@RequestParam(defaultValue="false") boolean includeRemoved) {
+        return ResponseEntity.ok(creatureService.getAllCreatures(includeRemoved));
     }
 
     //route 2: GET /api/creaturess/{id}

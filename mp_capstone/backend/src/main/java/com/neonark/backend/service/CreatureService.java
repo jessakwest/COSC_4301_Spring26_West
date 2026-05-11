@@ -23,9 +23,15 @@ public class CreatureService {
     private final HabitatRepository habitatRepository;
     private final ObservationRepository observationRepository;
 
-    //route 1: GET /api/creatures
-    public List<CreatureResponse> getAllCreatures() {
-        return creatureRepository.findByRemovedAtIsNull().stream().map(this::mapToResponse).toList();
+    //route 1.a and 1.b: GET /api/creatures -- all creatures, including removed or only active
+    public List<CreatureResponse> getAllCreatures(boolean includeRemoved) {
+        List<Creature> creatures;
+        if(includeRemoved) {
+            creatures = creatureRepository.findAll();
+        } else {
+            creatures = creatureRepository.findByRemovedAtIsNull();
+        }
+        return creatures.stream().map(this::mapToResponse).toList();
     }
 
     //route 2: GET /api/creaturess/{id}

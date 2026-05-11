@@ -14,4 +14,6 @@ public class CreatureResponse {
     private String habitatName;
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant removedAt;
+    private boolean isRemoved;
 }
