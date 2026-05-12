@@ -15,6 +15,7 @@ import java.util.List;
 public class FeedingService {
     private final FeedingRepository feedingRepository;
 
+    //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
     public List<FeedingLookupResponse> getFeedingsByTime(String time) {
         LocalTime feedingTime;
 

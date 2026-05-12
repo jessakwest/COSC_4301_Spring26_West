@@ -1,12 +1,20 @@
 package com.neonark.cli;
 
+import com.neonark.cli.dto.CreatureResponse;
 import java.util.Scanner;
 
 public class Main {
+    //private global variables
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final ApiClient apiClient = new ApiClient();
+
     public static void main(String[] args) {
+        displayHeader();
         menuSelection();
-        System.out.println("\n\nend of program.");
+        System.out.println("\nend of program.");
     }
+
+    //menu related
     public static void displayHeader(){
         System.out.println();
         for(int i=0; i < 27; i++) { System.out.print("="); }
@@ -34,11 +42,9 @@ public class Main {
         System.out.print("Select an option: ");
     }
     public static void menuSelection(){
-        Scanner scanner = new Scanner(System.in);
         boolean running = true;
 
         while(running) {
-            displayHeader();
             displayMainMenu();
 
             String input = scanner.nextLine();
@@ -46,6 +52,7 @@ public class Main {
             switch (input) {
                 case "1":
                     System.out.println("\nSelected: List all creatures");
+                    listAllCreatures();
                     break;
                 case "2":
                     System.out.println("\nSelected: View creature by ID");
@@ -71,10 +78,63 @@ public class Main {
                 case "0":
                     System.out.println("\nSelected: Exit");
                     running = false;
+                    scanner.close();
                     break;
                 default:
                     System.out.println("\nInvalid input. Try again.");
+                    //pause();
             }
+        }
+    }
+
+    //helper methods
+    public static boolean promptYesNo(String message) {
+        while (true) {
+            System.out.print(message);
+            String input = scanner.nextLine();
+
+            if (input.equalsIgnoreCase("y")) { return true; }
+            if (input.equalsIgnoreCase("n")) { return false; }
+
+            System.out.println("Invalid input. Enter y or n.");
+        }
+    }
+
+    //route 1.a and 1.b: GET /api/creatures -- all creatures, including removed or only active
+    public static void listAllCreatures(){
+        try {
+            boolean includeRemoved = promptYesNo("\nInclude removed creatures? (y/n): ") ;
+
+            if (includeRemoved) {
+                System.out.println(("\nCREATURE REGISTRY: all, including removed"));
+            } else {
+                System.out.println(("\nCREATURE REGISTRY: active only"));
+            }
+
+            String divider = "------------------------------------------------";
+            CreatureResponse[] creatures = apiClient.getAllCreatures(includeRemoved);
+
+            System.out.println(divider);
+
+            if (creatures.length == 0) {
+                System.out.println(("No creatures found\n"));
+                return;
+            }
+
+            System.out.printf("%-5s %-10s %-15s %-25s%n%s%n",
+                    "ID", "NAME", "STATUS", "HABITAT", divider);
+
+            for (CreatureResponse c : creatures) {
+                System.out.printf(
+                        "%-5d %-10s %-15s %-25s%n",
+                        c.getId(),
+                        c.getName(),
+                        c.getStatus(),
+                        c.getHabitatName()
+                );
+            }
+        } catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
         }
     }
 }

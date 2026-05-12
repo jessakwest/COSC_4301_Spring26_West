@@ -25,7 +25,7 @@ public class UserService {
             throw new ForbiddenException("Access denied.");
         }
     }
-
+    //route 8: GET /api/admin/users -- lists all user
     public List<UserResponse> getAllUsers() {
         List<User> users = userRepository.findAll();
 
