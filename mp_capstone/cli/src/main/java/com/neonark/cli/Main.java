@@ -2,6 +2,8 @@ package com.neonark.cli;
 
 import com.neonark.cli.dto.CreateCreatureRequest;
 import com.neonark.cli.dto.CreatureResponse;
+import com.neonark.cli.dto.RenameCreatureRequest;
+
 import java.util.Scanner;
 
 public class Main {
@@ -65,6 +67,7 @@ public class Main {
                     break;
                 case "4":
                     System.out.println("\nSelected: Rename creature");
+                    renameCreature();
                     break;
                 case "5":
                     System.out.println("\nSelected: Remove creature");
@@ -208,6 +211,32 @@ public class Main {
     }
 
     //route 4: PUT /api/creatures/{id}/name
+    public static void renameCreature(){
+        try {
+            System.out.println("\nRENAME CREATURE");
+            String divider = "------------------------------------------------";
+            // gather info
+            Long creatureId = promptLong("Creature ID: ");
+            String newName = promptString("New name: ");
+            boolean changeConfirmed = promptYesNo("\nConfirm name change to: " + newName + " ? (y/n): ") ;
+
+            if (!changeConfirmed) {
+                System.out.println(("\nCreature rename cancelled.\n" + divider));
+            }
+
+            //rename creature
+            RenameCreatureRequest request = new RenameCreatureRequest(creatureId, newName);
+            CreatureResponse creature = apiClient.renameCreature(creatureId, request);
+
+            System.out.println(divider);
+            System.out.println("Creature renamed successfully.");
+            System.out.printf("%-15s %s%n", "Creature's new name:", creature.getName());
+
+        } catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
+        }
+    }
+
     //route 5: DELETE /api/creatures/{id}
     //route 6: GET /api/creatures/{id}/observations
     // route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id

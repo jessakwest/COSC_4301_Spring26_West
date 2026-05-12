@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.neonark.cli.dto.CreateCreatureRequest;
 import com.neonark.cli.dto.CreatureResponse;
+import com.neonark.cli.dto.RenameCreatureRequest;
 
 import java.io.IOException;
 import java.net.URI;
@@ -46,8 +47,8 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("API returned status: " +  response.statusCode());
+        if (response.statusCode() > 300) {
+            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
         }
         return mapper.readValue(response.body(), CreatureResponse.class);
     }
@@ -64,23 +65,37 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-        int statusCode = response.statusCode();
-
-        if (response.statusCode() != 201) {
-            throw new RuntimeException("API returned status: " +  response.statusCode());
+        if (response.statusCode() > 300) {
+            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
         }
         return mapper.readValue(response.body(), CreatureResponse.class);
     }
 
     //route 4: PUT /api/creatures/{id}/name
+    public CreatureResponse renameCreature(Long id, RenameCreatureRequest request) throws IOException, InterruptedException {
+        String json = mapper.writeValueAsString(request);
 
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/creatures/" + id + "/name"))
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() > 300) {
+            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
+        }
+        return mapper.readValue(response.body(), CreatureResponse.class);
+    }
 
     //route 5: DELETE /api/creatures/{id}
+
+
+
     //route 6: GET /api/creatures/{id}/observations
-    // route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
+    //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
     //route 8: GET /api/admin/users -- lists all users
-
-
     //internal: PUT /api/creatures/{id}/restore
 
 }

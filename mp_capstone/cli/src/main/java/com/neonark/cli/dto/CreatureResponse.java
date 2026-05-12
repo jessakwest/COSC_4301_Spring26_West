@@ -31,4 +31,6 @@ public class CreatureResponse {
     public Instant getUpdatedAt() { return updatedAt;}
     public Instant getRemovedAt() { return removedAt;}
     public boolean isRemoved() { return removed; }
+
+    public void setCreatureName(String name) { this.name = name; }
 }
