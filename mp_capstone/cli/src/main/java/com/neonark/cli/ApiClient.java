@@ -4,6 +4,7 @@ package com.neonark.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.neonark.cli.dto.CreateCreatureRequest;
 import com.neonark.cli.dto.CreatureResponse;
 
 import java.io.IOException;
@@ -39,8 +40,41 @@ public class ApiClient {
                 CreatureResponse[].class);
     }
     //route 2: GET /api/creaturess/{id}
+    public CreatureResponse getCreatureById(Long id) throws IOException, InterruptedException {
+        HttpRequest request =  HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/creatures/" + id)).GET().build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("API returned status: " +  response.statusCode());
+        }
+        return mapper.readValue(response.body(), CreatureResponse.class);
+    }
+
     //route 3: POST /api/creatures
+    public CreatureResponse createCreature(CreateCreatureRequest request) throws IOException, InterruptedException {
+        String json = mapper.writeValueAsString(request);
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/creatures"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        int statusCode = response.statusCode();
+
+        if (response.statusCode() != 201) {
+            throw new RuntimeException("API returned status: " +  response.statusCode());
+        }
+        return mapper.readValue(response.body(), CreatureResponse.class);
+    }
+
     //route 4: PUT /api/creatures/{id}/name
+
+
     //route 5: DELETE /api/creatures/{id}
     //route 6: GET /api/creatures/{id}/observations
     // route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id

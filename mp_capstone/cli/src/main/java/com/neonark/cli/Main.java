@@ -1,5 +1,6 @@
 package com.neonark.cli;
 
+import com.neonark.cli.dto.CreateCreatureRequest;
 import com.neonark.cli.dto.CreatureResponse;
 import java.util.Scanner;
 
@@ -56,9 +57,11 @@ public class Main {
                     break;
                 case "2":
                     System.out.println("\nSelected: View creature by ID");
+                    viewCreatureById();
                     break;
                 case "3":
                     System.out.println("\nSelected: Register new creature");
+                    registerCreature();
                     break;
                 case "4":
                     System.out.println("\nSelected: Rename creature");
@@ -99,6 +102,26 @@ public class Main {
             System.out.println("Invalid input. Enter y or n.");
         }
     }
+    public static Long promptLong(String message) {
+        while (true) {
+            try {
+                System.out.print(message);
+                return Long.parseLong(scanner.nextLine());
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid number. Try again.");
+            }
+        }
+    }
+    public static String promptString(String message) {
+        while (true) {
+            try {
+                System.out.print(message);
+                return scanner.nextLine();
+            } catch (Exception e) {
+                System.out.println("Invalid. Try again.");
+            }
+        }
+    }
 
     //route 1.a and 1.b: GET /api/creatures -- all creatures, including removed or only active
     public static void listAllCreatures(){
@@ -137,4 +160,57 @@ public class Main {
             System.out.println("API Error: " + e.getMessage());
         }
     }
+
+    //route 2: GET /api/creaturess/{id}
+    public static void viewCreatureById(){
+        try {
+            Long id = promptLong("\nEnter creature id:");
+            CreatureResponse creature = apiClient.getCreatureById(id);
+            String divider = "------------------------------------------------";
+            System.out.println("\nCREATURE " + id + "'s DETAILS");
+            System.out.println(divider);
+            System.out.printf("%-15s %s%n", "ID:", creature.getId());
+            System.out.printf("%-15s %s%n", "NAME:", creature.getName());
+            System.out.printf("%-15s %s%n", "STATUS:", creature.getStatus());
+            System.out.printf("%-15s %s%n", "HABITAT:", creature.getHabitatName());
+            System.out.printf("%-15s %s%n", "REMOVED:", creature.isRemoved() ? "Yes" : "No");
+            System.out.println(divider);
+
+        } catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
+        }
+    }
+
+    //route 3: POST /api/creatures
+    public static void registerCreature(){
+        try {
+            System.out.println("\nREGISTER NEW CREATURE");
+            String divider = "------------------------------------------------";
+            // gather info
+            String name = promptString("Name: ");
+            String status = promptString("Status: ");
+            Long habitatId = promptLong("Habitat ID: ");
+
+            //create creature
+            CreateCreatureRequest request = new CreateCreatureRequest(name, status, habitatId);
+            CreatureResponse creature = apiClient.createCreature(request);
+
+            System.out.println(divider);
+            System.out.println("Creature registered successfully.");
+            System.out.printf("%-15s %s%n", "Registered Creature's ID:", creature.getId());
+            System.out.printf("%-15s %s%n", "Name:", creature.getName());
+            System.out.printf("%-15s %s%n", "Status:", creature.getStatus());
+            System.out.printf("%-15s %s%n", "Habitat:", creature.getHabitatName());
+
+        } catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
+        }
+    }
+
+    //route 4: PUT /api/creatures/{id}/name
+    //route 5: DELETE /api/creatures/{id}
+    //route 6: GET /api/creatures/{id}/observations
+    // route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
+    //route 8: GET /api/admin/users -- lists all users
+
 }
