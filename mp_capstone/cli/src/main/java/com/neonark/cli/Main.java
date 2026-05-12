@@ -217,15 +217,16 @@ public class Main {
             String divider = "------------------------------------------------";
             // gather info
             Long creatureId = promptLong("Creature ID: ");
-            String newName = promptString("New name: ");
-            boolean changeConfirmed = promptYesNo("\nConfirm name change to: " + newName + " ? (y/n): ") ;
+            String name = promptString("New name: ");
+            boolean changeConfirmed = promptYesNo("\nConfirm name change to: " + name + " ? (y/n): ") ;
 
             if (!changeConfirmed) {
                 System.out.println(("\nCreature rename cancelled.\n" + divider));
+                return;
             }
 
             //rename creature
-            RenameCreatureRequest request = new RenameCreatureRequest(creatureId, newName);
+            RenameCreatureRequest request = new RenameCreatureRequest(name);
             CreatureResponse creature = apiClient.renameCreature(creatureId, request);
 
             System.out.println(divider);
@@ -238,6 +239,8 @@ public class Main {
     }
 
     //route 5: DELETE /api/creatures/{id}
+    public static void deleteCreature(){}
+
     //route 6: GET /api/creatures/{id}/observations
     // route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
     //route 8: GET /api/admin/users -- lists all users

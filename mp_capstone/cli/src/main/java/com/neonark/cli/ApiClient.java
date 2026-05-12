@@ -90,7 +90,9 @@ public class ApiClient {
     }
 
     //route 5: DELETE /api/creatures/{id}
+    public void deleteCreature(Long id) throws IOException, InterruptedException {
 
+    }
 
 
     //route 6: GET /api/creatures/{id}/observations

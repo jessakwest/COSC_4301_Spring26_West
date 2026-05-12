@@ -1,20 +1,17 @@
 package com.neonark.cli.dto;
 
 public class RenameCreatureRequest {
-    private Long creatureId;
-    private String newName;
+    private String name;
 
     public RenameCreatureRequest() {}
-    public RenameCreatureRequest(Long creatureId, String newName) {
-        this.creatureId = creatureId;
-        this.newName = newName;
+    public RenameCreatureRequest(String name) {
+        this.name = name;
     }
 
-    public Long getCreatureId() {
-        return creatureId;
+    public String getName() {
+        return name;
     }
-
-    public String getNewName() {
-        return newName;
+    public void setName(String name) {
+        this.name = name;
     }
 }
