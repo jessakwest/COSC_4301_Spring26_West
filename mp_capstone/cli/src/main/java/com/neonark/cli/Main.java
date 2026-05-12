@@ -71,6 +71,7 @@ public class Main {
                     break;
                 case "5":
                     System.out.println("\nSelected: Remove creature");
+                    removeCreature();
                     break;
                 case "6":
                     System.out.println("\nSelected: View creature observations/notes");
@@ -218,9 +219,9 @@ public class Main {
             // gather info
             Long creatureId = promptLong("Creature ID: ");
             String name = promptString("New name: ");
-            boolean changeConfirmed = promptYesNo("\nConfirm name change to: " + name + " ? (y/n): ") ;
+            boolean confirmed = promptYesNo("\nConfirm name change to: " + name + " ? (y/n): ") ;
 
-            if (!changeConfirmed) {
+            if (!confirmed) {
                 System.out.println(("\nCreature rename cancelled.\n" + divider));
                 return;
             }
@@ -239,10 +240,29 @@ public class Main {
     }
 
     //route 5: DELETE /api/creatures/{id}
-    public static void deleteCreature(){}
+    public static void removeCreature(){
+        try {
+            System.out.println("\nREMOVE CREATURE");
+            String divider = "------------------------------------------------";
+            Long id = promptLong("Creature ID: ");
+            boolean confirmed = promptYesNo("Confirm removal? (y/n): ");
+
+            if (!confirmed) {
+                System.out.println(("\nCreature removal cancelled.\n" + divider));
+                return;
+            }
+
+            apiClient.deleteCreature(id);
+            System.out.println(("\nCreature removal successful.\n" + divider));
+
+
+        } catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
+        }
+    }
 
     //route 6: GET /api/creatures/{id}/observations
-    // route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
+    //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
     //route 8: GET /api/admin/users -- lists all users
 
 }

@@ -92,6 +92,17 @@ public class ApiClient {
     //route 5: DELETE /api/creatures/{id}
     public void deleteCreature(Long id) throws IOException, InterruptedException {
 
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/creatures/" + id))
+                .DELETE().build();
+
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() > 300) {
+            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
+        }
+
+        //else successful and return to stack trace
     }
 
 
