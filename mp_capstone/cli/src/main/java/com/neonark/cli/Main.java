@@ -1,8 +1,6 @@
 package com.neonark.cli;
 
-import com.neonark.cli.dto.CreateCreatureRequest;
-import com.neonark.cli.dto.CreatureResponse;
-import com.neonark.cli.dto.RenameCreatureRequest;
+import com.neonark.cli.dto.*;
 
 import java.util.Scanner;
 
@@ -18,14 +16,19 @@ public class Main {
     }
 
     //menu related
-    public static void displayHeader(){
+    public static void displayHeader() {
         System.out.println();
-        for(int i=0; i < 27; i++) { System.out.print("="); }
+        for (int i = 0; i < 27; i++) {
+            System.out.print("=");
+        }
         System.out.print("\n\tNEON ARK CLI SYSTEM\n");
-        for(int i=0; i < 27; i++) { System.out.print("=");}
+        for (int i = 0; i < 27; i++) {
+            System.out.print("=");
+        }
         System.out.println();
     }
-    public static void displayMainMenu(){
+
+    public static void displayMainMenu() {
         System.out.print("""
                 
                 1. List all creatures
@@ -44,10 +47,11 @@ public class Main {
                 """);
         System.out.print("Select an option: ");
     }
-    public static void menuSelection(){
+
+    public static void menuSelection() {
         boolean running = true;
 
-        while(running) {
+        while (running) {
             displayMainMenu();
 
             String input = scanner.nextLine();
@@ -75,6 +79,7 @@ public class Main {
                     break;
                 case "6":
                     System.out.println("\nSelected: View creature observations/notes");
+                    viewCreatureObservations();
                     break;
                 case "7":
                     System.out.println("\nSelected: Find creatures by feeding time");
@@ -100,12 +105,17 @@ public class Main {
             System.out.print(message);
             String input = scanner.nextLine();
 
-            if (input.equalsIgnoreCase("y")) { return true; }
-            if (input.equalsIgnoreCase("n")) { return false; }
+            if (input.equalsIgnoreCase("y")) {
+                return true;
+            }
+            if (input.equalsIgnoreCase("n")) {
+                return false;
+            }
 
             System.out.println("Invalid input. Enter y or n.");
         }
     }
+
     public static Long promptLong(String message) {
         while (true) {
             try {
@@ -116,6 +126,7 @@ public class Main {
             }
         }
     }
+
     public static String promptString(String message) {
         while (true) {
             try {
@@ -128,9 +139,9 @@ public class Main {
     }
 
     //route 1.a and 1.b: GET /api/creatures -- all creatures, including removed or only active
-    public static void listAllCreatures(){
+    public static void listAllCreatures() {
         try {
-            boolean includeRemoved = promptYesNo("\nInclude removed creatures? (y/n): ") ;
+            boolean includeRemoved = promptYesNo("\nInclude removed creatures? (y/n): ");
 
             if (includeRemoved) {
                 System.out.println(("\nCREATURE REGISTRY: all, including removed"));
@@ -166,7 +177,7 @@ public class Main {
     }
 
     //route 2: GET /api/creaturess/{id}
-    public static void viewCreatureById(){
+    public static void viewCreatureById() {
         try {
             Long id = promptLong("\nEnter creature id:");
             CreatureResponse creature = apiClient.getCreatureById(id);
@@ -186,7 +197,7 @@ public class Main {
     }
 
     //route 3: POST /api/creatures
-    public static void registerCreature(){
+    public static void registerCreature() {
         try {
             System.out.println("\nREGISTER NEW CREATURE");
             String divider = "------------------------------------------------";
@@ -212,14 +223,14 @@ public class Main {
     }
 
     //route 4: PUT /api/creatures/{id}/name
-    public static void renameCreature(){
+    public static void renameCreature() {
         try {
             System.out.println("\nRENAME CREATURE");
             String divider = "------------------------------------------------";
             // gather info
             Long creatureId = promptLong("Creature ID: ");
             String name = promptString("New name: ");
-            boolean confirmed = promptYesNo("\nConfirm name change to: " + name + " ? (y/n): ") ;
+            boolean confirmed = promptYesNo("\nConfirm name change to: " + name + " ? (y/n): ");
 
             if (!confirmed) {
                 System.out.println(("\nCreature rename cancelled.\n" + divider));
@@ -240,7 +251,7 @@ public class Main {
     }
 
     //route 5: DELETE /api/creatures/{id}
-    public static void removeCreature(){
+    public static void removeCreature() {
         try {
             System.out.println("\nREMOVE CREATURE");
             String divider = "------------------------------------------------";
@@ -262,7 +273,37 @@ public class Main {
     }
 
     //route 6: GET /api/creatures/{id}/observations
+    public static void viewCreatureObservations() {
+        try {
+            String divider = "------------------------------------------------";
+            Long id = promptLong("Creature ID: ");
+            CreatureObservationsResponse response = apiClient.getCreatureObservations(id);
+            System.out.println("\nCREATURE " + id + "'s OBSERVATIONS");
+            System.out.println(divider);
+
+            if (response.getObservations().isEmpty()) {
+                System.out.println(("No observations found\n"));
+                return;
+            }
+
+            System.out.printf("%-5s %-20s %-30s%n%s%n",
+                    "ID", "AUTHOR", "NOTE", divider);
+
+            for (ObservationResponse o : response.getObservations()) {
+                System.out.printf(
+                        "%-5d %-20s %-30s%n",
+                        o.getId(),
+                        o.getAuthor(),
+                        o.getNote()
+                );
+            } // end enhanced for
+        }// end try block
+        catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
+        } // end catch block
+    }
+}
+
+
     //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
     //route 8: GET /api/admin/users -- lists all users
-
-}

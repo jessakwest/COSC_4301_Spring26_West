@@ -4,9 +4,7 @@ package com.neonark.cli;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.neonark.cli.dto.CreateCreatureRequest;
-import com.neonark.cli.dto.CreatureResponse;
-import com.neonark.cli.dto.RenameCreatureRequest;
+import com.neonark.cli.dto.*;
 
 import java.io.IOException;
 import java.net.URI;
@@ -105,8 +103,22 @@ public class ApiClient {
         //else successful and return to stack trace
     }
 
-
     //route 6: GET /api/creatures/{id}/observations
+    public CreatureObservationsResponse getCreatureObservations(Long id) throws IOException, InterruptedException {
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/creatures/" + id + "/observations"))
+                .GET().build();
+
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() > 300) {
+            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
+        }
+
+        return mapper.readValue(response.body(), CreatureObservationsResponse.class);
+    }
+
+
     //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
     //route 8: GET /api/admin/users -- lists all users
     //internal: PUT /api/creatures/{id}/restore

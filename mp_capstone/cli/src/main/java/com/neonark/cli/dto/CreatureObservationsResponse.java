@@ -2,12 +2,12 @@ package com.neonark.cli.dto;
 
 import java.util.List;
 
-public class CreateObservationsResponse {
+public class CreatureObservationsResponse {
     private Long creatureId;
     private String creatureName;
     private List<ObservationResponse> observations;
 
-    public CreateObservationsResponse() {}
+    public CreatureObservationsResponse() {}
 
     //getters
     public Long getCreatureId() {
