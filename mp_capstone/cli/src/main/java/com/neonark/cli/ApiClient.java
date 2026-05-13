@@ -118,9 +118,35 @@ public class ApiClient {
         return mapper.readValue(response.body(), CreatureObservationsResponse.class);
     }
 
-
     //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
+    public FeedingResponse[] getFeedingsByTime(String time) throws IOException, InterruptedException {
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/feedings?time=" + time))
+                .GET().build();
+
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() > 300) {
+            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
+        }
+
+        return mapper.readValue(response.body(), FeedingResponse[].class);
+    }
+
     //route 8: GET /api/admin/users -- lists all users
+    public UserResponse[] getAllUsers() throws IOException, InterruptedException {
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/admin/users?role=ADMIN"))
+                .GET().build();
+
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() > 300) {
+            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
+        }
+
+        return mapper.readValue(response.body(), UserResponse[].class);
+    }
     //internal: PUT /api/creatures/{id}/restore
 
 }

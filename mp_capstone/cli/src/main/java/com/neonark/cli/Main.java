@@ -83,9 +83,11 @@ public class Main {
                     break;
                 case "7":
                     System.out.println("\nSelected: Find creatures by feeding time");
+                    findCreaturesByFeedingTime();
                     break;
                 case "8":
                     System.out.println("\nSelected: View all system users (Admin Only)");
+                    viewAllUsers();
                     break;
                 case "0":
                     System.out.println("\nSelected: Exit");
@@ -95,45 +97,6 @@ public class Main {
                 default:
                     System.out.println("\nInvalid input. Try again.");
                     //pause();
-            }
-        }
-    }
-
-    //helper methods
-    public static boolean promptYesNo(String message) {
-        while (true) {
-            System.out.print(message);
-            String input = scanner.nextLine();
-
-            if (input.equalsIgnoreCase("y")) {
-                return true;
-            }
-            if (input.equalsIgnoreCase("n")) {
-                return false;
-            }
-
-            System.out.println("Invalid input. Enter y or n.");
-        }
-    }
-
-    public static Long promptLong(String message) {
-        while (true) {
-            try {
-                System.out.print(message);
-                return Long.parseLong(scanner.nextLine());
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid number. Try again.");
-            }
-        }
-    }
-
-    public static String promptString(String message) {
-        while (true) {
-            try {
-                System.out.print(message);
-                return scanner.nextLine();
-            } catch (Exception e) {
-                System.out.println("Invalid. Try again.");
             }
         }
     }
@@ -297,13 +260,100 @@ public class Main {
                         o.getNote()
                 );
             } // end enhanced for
-        }// end try block
-        catch (Exception e) {
+        } catch (Exception e) {
             System.out.println("API Error: " + e.getMessage());
-        } // end catch block
-    }
-}
-
+            } // end catch block
+        }
 
     //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
+    public static void findCreaturesByFeedingTime() {
+        try {
+            String divider = "------------------------------------------------";
+            String feedingTime = promptTime("Enter feeding time (HH:MM): ");
+            FeedingResponse[] feedings = apiClient.getFeedingsByTime(feedingTime);
+            System.out.println("\nCREATURES FEEDING TIME at  " + feedingTime);
+            System.out.println(divider);
+
+            if (feedings.length == 0) {
+                System.out.println(("No creatures scheduled for feedings at that time.\n"));
+                return;
+            }
+
+            System.out.printf("%-5s %-20s %-15s%n%s%n",
+                    "ID", "CREATURE", "TIME", divider);
+
+            for (FeedingResponse f : feedings) {
+                System.out.printf(
+                        "%-5d %-20s %-15s%n",
+                        f.getCreatureId(),
+                        f.getCreatureName(),
+                        f.getFeedingTime()
+                );
+            }
+
+        } catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
+        }
+    }
+
     //route 8: GET /api/admin/users -- lists all users
+    public static void viewAllUsers() {
+        try {
+            String divider = "------------------------------------------------";
+        } catch (Exception e) {
+            System.out.println("API Error: " + e.getMessage());
+        }
+    }
+
+    //helper methods
+    public static boolean promptYesNo(String message) {
+        while (true) {
+            System.out.print(message);
+            String input = scanner.nextLine();
+
+            if (input.equalsIgnoreCase("y")) {
+                return true;
+            }
+            if (input.equalsIgnoreCase("n")) {
+                return false;
+            }
+
+            System.out.println("Invalid input. Enter y or n.");
+        }
+    }
+    public static Long promptLong(String message) {
+        while (true) {
+            try {
+                System.out.print(message);
+                return Long.parseLong(scanner.nextLine());
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid number. Try again.");
+            }
+        }
+    }
+    public static String promptString(String message) {
+        while (true) {
+            try {
+                System.out.print(message);
+                return scanner.nextLine();
+            } catch (Exception e) {
+                System.out.println("Invalid. Try again.");
+            }
+        }
+    }
+    public static String promptTime(String message) {
+        while (true) {
+                System.out.print(message);
+                String input = scanner.nextLine().trim();
+
+                if (input.matches("^([01]\\d|2[0-3]):([0-5]\\d)$")) {
+                    return input;
+                }
+
+                System.out.println(
+                        "Invalid time format. Use HH:MM."
+                );
+        } // end while
+    }
+
+}
