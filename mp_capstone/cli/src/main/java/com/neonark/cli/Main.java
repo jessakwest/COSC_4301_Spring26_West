@@ -90,8 +90,13 @@ public class Main {
                     break;
                 case "0":
                     System.out.println("\nSelected: Exit");
-                    running = false;
-                    scanner.close();
+                    //confirm exit
+                    boolean confirmed = promptYesNo("Confirm exit? (y/n)");
+                    if(confirmed) {
+                        running = false;
+                        scanner.close();
+                        System.out.println("\nExiting Neon Ark CLI...");
+                    }
                     break;
                 default:
                     System.out.println("\nInvalid input. Try again.");
@@ -144,7 +149,7 @@ public class Main {
             Long id = promptLong("\nEnter creature id:");
             CreatureResponse creature = apiClient.getCreatureById(id);
             String divider = "------------------------------------------------";
-            System.out.println("\nCREATURE " + id + "'s DETAILS");
+            System.out.println("\nCREATURE DETAILS");
             System.out.println(divider);
             System.out.printf("%-15s %s%n", "ID:", creature.getId());
             System.out.printf("%-15s %s%n", "NAME:", creature.getName());
@@ -270,7 +275,7 @@ public class Main {
             String divider = "------------------------------------------------";
             String feedingTime = promptTime("Enter feeding time (HH:MM): ");
             FeedingResponse[] feedings = apiClient.getFeedingsByTime(feedingTime);
-            System.out.println("\nCREATURES FEEDING TIME at  " + feedingTime);
+            System.out.println("\nCREATURES SCHEDULED FOR FEEDING at  " + feedingTime);
             System.out.println(divider);
 
             if (feedings.length == 0) {
@@ -356,7 +361,10 @@ public class Main {
         while (true) {
             try {
                 System.out.print(message);
-                return scanner.nextLine();
+                String input = scanner.nextLine().trim();
+                if (!input.isBlank()) {
+                    return input;
+                }
             } catch (Exception e) {
                 System.out.println("Invalid. Try again.");
             }
@@ -376,5 +384,4 @@ public class Main {
                 );
         } // end while
     }
-
 }

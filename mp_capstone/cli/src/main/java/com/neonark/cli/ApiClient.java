@@ -147,6 +147,7 @@ public class ApiClient {
 
         return mapper.readValue(response.body(), UserResponse[].class);
     }
+
     //internal: PUT /api/creatures/{id}/restore
 
 }
