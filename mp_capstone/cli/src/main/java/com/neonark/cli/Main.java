@@ -10,7 +10,6 @@ public class Main {
     private static final ApiClient apiClient = new ApiClient();
 
     public static void main(String[] args) {
-        displayHeader();
         menuSelection();
         System.out.println("\nend of program.");
     }
@@ -27,7 +26,6 @@ public class Main {
         }
         System.out.println();
     }
-
     public static void displayMainMenu() {
         System.out.print("""
                 
@@ -47,11 +45,11 @@ public class Main {
                 """);
         System.out.print("Select an option: ");
     }
-
     public static void menuSelection() {
         boolean running = true;
 
         while (running) {
+            displayHeader();
             displayMainMenu();
 
             String input = scanner.nextLine();
@@ -87,6 +85,7 @@ public class Main {
                     break;
                 case "8":
                     System.out.println("\nSelected: View all system users (Admin Only)");
+                    System.out.println("Signing in as ADMIN....\n");
                     viewAllUsers();
                     break;
                 case "0":
@@ -300,6 +299,28 @@ public class Main {
     public static void viewAllUsers() {
         try {
             String divider = "------------------------------------------------";
+            System.out.println("\nSYSTEM USERS\n" + divider);
+            UserResponse[] users = apiClient.getAllUsers();
+
+            if (users.length == 0) {
+                System.out.println(("No users found.\n"));
+                return;
+            }
+
+            System.out.printf("%-5s %-20s %-15s %-25s %-15s%n%s%n",
+                    "ID", "NAME", "ROLE", "EMAIL", "PHONE", divider);
+
+            for (UserResponse u : users) {
+                System.out.printf(
+                        "%-5s %-20s %-15s %-25s %-15s%n",
+                        u.getId(),
+                        u.getFullName(),
+                        u.getRole(),
+                        u.getEmail(),
+                        u.getPhone()
+                );
+            }
+
         } catch (Exception e) {
             System.out.println("API Error: " + e.getMessage());
         }
