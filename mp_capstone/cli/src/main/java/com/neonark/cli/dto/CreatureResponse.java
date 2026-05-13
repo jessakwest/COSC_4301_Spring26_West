@@ -10,7 +10,6 @@ public class CreatureResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant removedAt;
-    private boolean removed;
 
     public CreatureResponse() {}
 
@@ -30,7 +29,7 @@ public class CreatureResponse {
     public Instant getCreatedAt() { return createdAt;}
     public Instant getUpdatedAt() { return updatedAt;}
     public Instant getRemovedAt() { return removedAt;}
-    public boolean isRemoved() { return removed; }
 
     public void setCreatureName(String name) { this.name = name; }
+    public void setRemovedAt(Instant removedAt) { this.removedAt = removedAt; }
 }

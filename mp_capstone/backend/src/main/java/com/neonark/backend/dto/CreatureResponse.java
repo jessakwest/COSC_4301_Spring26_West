@@ -15,5 +15,4 @@ public class CreatureResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant removedAt;
-    private boolean isRemoved;
 }

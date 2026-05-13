@@ -8,6 +8,7 @@ public class Main {
     //private global variables
     private static final Scanner scanner = new Scanner(System.in);
     private static final ApiClient apiClient = new ApiClient();
+    private static final String DIVIDER = "-------------------------------------------------------------------";
 
     public static void main(String[] args) {
         menuSelection();
@@ -108,6 +109,7 @@ public class Main {
     //route 1.a and 1.b: GET /api/creatures -- all creatures, including removed or only active
     public static void listAllCreatures() {
         try {
+            //action confirmation: all or just active creatures
             boolean includeRemoved = promptYesNo("\nInclude removed creatures? (y/n): ");
 
             if (includeRemoved) {
@@ -116,26 +118,28 @@ public class Main {
                 System.out.println(("\nCREATURE REGISTRY: active only"));
             }
 
-            String divider = "------------------------------------------------";
             CreatureResponse[] creatures = apiClient.getAllCreatures(includeRemoved);
+            System.out.println(DIVIDER);
 
-            System.out.println(divider);
-
+            //edge case: none found
             if (creatures.length == 0) {
                 System.out.println(("No creatures found\n"));
                 return;
             }
 
-            System.out.printf("%-5s %-10s %-15s %-25s%n%s%n",
-                    "ID", "NAME", "STATUS", "HABITAT", divider);
-
+            //output header
+            System.out.printf("%-5s %-10s %-25s %-15s %-10s %-10s %n%s%n",
+                    "ID", "NAME", "HABITAT", "STATUS", "ACTIVE", "REMOVED AT", DIVIDER);
+            //output body
             for (CreatureResponse c : creatures) {
                 System.out.printf(
-                        "%-5d %-10s %-15s %-25s%n",
+                        "%-5d %-10s %-25s %-15s %-10s %-10s %n",
                         c.getId(),
                         c.getName(),
+                        c.getHabitatName(),
                         c.getStatus(),
-                        c.getHabitatName()
+                        c.getRemovedAt() == null ? "Yes" : "No",
+                        c.getRemovedAt()
                 );
             }
         } catch (Exception e) {
@@ -148,15 +152,19 @@ public class Main {
         try {
             Long id = promptLong("\nEnter creature id:");
             CreatureResponse creature = apiClient.getCreatureById(id);
-            String divider = "------------------------------------------------";
+            //output header
             System.out.println("\nCREATURE DETAILS");
-            System.out.println(divider);
+            System.out.println(DIVIDER);
+            //output body
             System.out.printf("%-15s %s%n", "ID:", creature.getId());
             System.out.printf("%-15s %s%n", "NAME:", creature.getName());
-            System.out.printf("%-15s %s%n", "STATUS:", creature.getStatus());
             System.out.printf("%-15s %s%n", "HABITAT:", creature.getHabitatName());
-            System.out.printf("%-15s %s%n", "REMOVED:", creature.isRemoved() ? "Yes" : "No");
-            System.out.println(divider);
+            System.out.printf("%-15s %s%n", "STATUS:", creature.getStatus());
+            System.out.printf("%-15s %s%n", "CREATED AT:", creature.getCreatedAt());
+            System.out.printf("%-15s %s%n", "UPDATED AT:", creature.getUpdatedAt());
+            System.out.printf("%-15s %s%n", "ACTIVE:", creature.getRemovedAt() == null ? "Yes" : "No");
+            System.out.printf("%-15s %s%n", "REMOVED AT:", creature.getRemovedAt());
+            System.out.println(DIVIDER);
 
         } catch (Exception e) {
             System.out.println("API Error: " + e.getMessage());
@@ -166,8 +174,9 @@ public class Main {
     //route 3: POST /api/creatures
     public static void registerCreature() {
         try {
+            //output header
             System.out.println("\nREGISTER NEW CREATURE");
-            String divider = "------------------------------------------------";
+;
             // gather info
             String name = promptString("Name: ");
             String status = promptString("Status: ");
@@ -177,7 +186,8 @@ public class Main {
             CreateCreatureRequest request = new CreateCreatureRequest(name, status, habitatId);
             CreatureResponse creature = apiClient.createCreature(request);
 
-            System.out.println(divider);
+            System.out.println(DIVIDER);
+            //output new creature's info
             System.out.println("Creature registered successfully.");
             System.out.printf("%-15s %s%n", "Registered Creature's ID:", creature.getId());
             System.out.printf("%-15s %s%n", "Name:", creature.getName());
@@ -193,22 +203,22 @@ public class Main {
     public static void renameCreature() {
         try {
             System.out.println("\nRENAME CREATURE");
-            String divider = "------------------------------------------------";
             // gather info
             Long creatureId = promptLong("Creature ID: ");
             String name = promptString("New name: ");
+            //action confirmation
             boolean confirmed = promptYesNo("\nConfirm name change to: " + name + " ? (y/n): ");
-
             if (!confirmed) {
-                System.out.println(("\nCreature rename cancelled.\n" + divider));
+                System.out.println(("\nCreature rename cancelled.\n" + DIVIDER));
                 return;
             }
 
-            //rename creature
+            //proceed: rename creature
             RenameCreatureRequest request = new RenameCreatureRequest(name);
             CreatureResponse creature = apiClient.renameCreature(creatureId, request);
 
-            System.out.println(divider);
+            System.out.println(DIVIDER);
+            //output new name
             System.out.println("Creature renamed successfully.");
             System.out.printf("%-15s %s%n", "Creature's new name:", creature.getName());
 
@@ -221,17 +231,18 @@ public class Main {
     public static void removeCreature() {
         try {
             System.out.println("\nREMOVE CREATURE");
-            String divider = "------------------------------------------------";
             Long id = promptLong("Creature ID: ");
-            boolean confirmed = promptYesNo("Confirm removal? (y/n): ");
 
+            //action confirmation
+            boolean confirmed = promptYesNo("Confirm removal? (y/n): ");
             if (!confirmed) {
-                System.out.println(("\nCreature removal cancelled.\n" + divider));
+                System.out.println(("\nCreature removal cancelled.\n" + DIVIDER));
                 return;
             }
 
+            //proceed to delete
             apiClient.deleteCreature(id);
-            System.out.println(("\nCreature removal successful.\n" + divider));
+            System.out.println(("\nCreature removal successful.\n" + DIVIDER));
 
 
         } catch (Exception e) {
@@ -242,20 +253,21 @@ public class Main {
     //route 6: GET /api/creatures/{id}/observations
     public static void viewCreatureObservations() {
         try {
-            String divider = "------------------------------------------------";
             Long id = promptLong("Creature ID: ");
             CreatureObservationsResponse response = apiClient.getCreatureObservations(id);
-            System.out.println("\nCREATURE " + id + "'s OBSERVATIONS");
-            System.out.println(divider);
 
+            System.out.println("\nCREATURE " + id + "'s OBSERVATIONS");
+            System.out.println(DIVIDER);
+
+            //edge case: none found
             if (response.getObservations().isEmpty()) {
                 System.out.println(("No observations found\n"));
                 return;
             }
-
+            //output header
             System.out.printf("%-5s %-20s %-30s%n%s%n",
-                    "ID", "AUTHOR", "NOTE", divider);
-
+                    "ID", "AUTHOR", "NOTE", DIVIDER);
+            //output body
             for (ObservationResponse o : response.getObservations()) {
                 System.out.printf(
                         "%-5d %-20s %-30s%n",
@@ -272,20 +284,21 @@ public class Main {
     //route 7: GET /api/feedings?time={HH:MM} -- feeding schedules by id
     public static void findCreaturesByFeedingTime() {
         try {
-            String divider = "------------------------------------------------";
             String feedingTime = promptTime("Enter feeding time (HH:MM): ");
             FeedingResponse[] feedings = apiClient.getFeedingsByTime(feedingTime);
-            System.out.println("\nCREATURES SCHEDULED FOR FEEDING at  " + feedingTime);
-            System.out.println(divider);
 
+            System.out.println("\nCREATURES SCHEDULED FOR FEEDING at  " + feedingTime);
+            System.out.println(DIVIDER);
+
+            //edge case: none found
             if (feedings.length == 0) {
                 System.out.println(("No creatures scheduled for feedings at that time.\n"));
                 return;
             }
-
+            //output header
             System.out.printf("%-5s %-20s %-15s%n%s%n",
-                    "ID", "CREATURE", "TIME", divider);
-
+                    "ID", "CREATURE", "TIME", DIVIDER);
+            //output body
             for (FeedingResponse f : feedings) {
                 System.out.printf(
                         "%-5d %-20s %-15s%n",
@@ -303,18 +316,19 @@ public class Main {
     //route 8: GET /api/admin/users -- lists all users
     public static void viewAllUsers() {
         try {
-            String divider = "------------------------------------------------";
-            System.out.println("\nSYSTEM USERS\n" + divider);
+
+            System.out.println("\nSYSTEM USERS\n" + DIVIDER);
             UserResponse[] users = apiClient.getAllUsers();
 
+            //edge case: none found
             if (users.length == 0) {
                 System.out.println(("No users found.\n"));
                 return;
             }
-
+            //output header
             System.out.printf("%-5s %-20s %-15s %-25s %-15s%n%s%n",
-                    "ID", "NAME", "ROLE", "EMAIL", "PHONE", divider);
-
+                    "ID", "NAME", "ROLE", "EMAIL", "PHONE", DIVIDER);
+            //output body
             for (UserResponse u : users) {
                 System.out.printf(
                         "%-5s %-20s %-15s %-25s %-15s%n",
@@ -325,13 +339,12 @@ public class Main {
                         u.getPhone()
                 );
             }
-
         } catch (Exception e) {
             System.out.println("API Error: " + e.getMessage());
         }
     }
 
-    //helper methods
+    //helper methods to verify input
     public static boolean promptYesNo(String message) {
         while (true) {
             System.out.print(message);

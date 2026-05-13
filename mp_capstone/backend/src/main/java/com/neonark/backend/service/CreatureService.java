@@ -136,6 +136,7 @@ public class CreatureService {
                 .habitatName(creature.getHabitat().getName())
                 .createdAt(creature.getCreatedAt())
                 .updatedAt(creature.getUpdatedAt())
+                .removedAt(creature.getRemovedAt())
                 .build();
     }
 

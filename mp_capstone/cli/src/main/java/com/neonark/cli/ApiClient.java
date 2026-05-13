@@ -30,14 +30,14 @@ public class ApiClient {
             endpoint += "?includeRemoved=true";
         }
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint)).GET().build();
-
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint)).GET().build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
+        handleErrorResponse(response);
         return mapper.readValue(response.body(),
                 CreatureResponse[].class);
     }
+
     //route 2: GET /api/creaturess/{id}
     public CreatureResponse getCreatureById(Long id) throws IOException, InterruptedException {
         HttpRequest request =  HttpRequest.newBuilder()
@@ -45,9 +45,7 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() > 300) {
-            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
-        }
+        handleErrorResponse(response);
         return mapper.readValue(response.body(), CreatureResponse.class);
     }
 
@@ -63,9 +61,7 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() > 300) {
-            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
-        }
+        handleErrorResponse(response);
         return mapper.readValue(response.body(), CreatureResponse.class);
     }
 
@@ -81,9 +77,7 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() > 300) {
-            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
-        }
+        handleErrorResponse(response);
         return mapper.readValue(response.body(), CreatureResponse.class);
     }
 
@@ -92,14 +86,12 @@ public class ApiClient {
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/creatures/" + id))
+                .header("Content-Type", "application/json")
                 .DELETE().build();
 
         HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() > 300) {
-            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
-        }
-
+        handleErrorResponse(response);
         //else successful and return to stack trace
     }
 
@@ -111,10 +103,7 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() > 300) {
-            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
-        }
-
+        handleErrorResponse(response);
         return mapper.readValue(response.body(), CreatureObservationsResponse.class);
     }
 
@@ -126,10 +115,7 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() > 300) {
-            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
-        }
-
+        handleErrorResponse(response);
         return mapper.readValue(response.body(), FeedingResponse[].class);
     }
 
@@ -141,13 +127,29 @@ public class ApiClient {
 
         HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() > 300) {
-            throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
-        }
-
+        handleErrorResponse(response);
         return mapper.readValue(response.body(), UserResponse[].class);
     }
 
-    //internal: PUT /api/creatures/{id}/restore
+    //helper method to handle error responses / get http status codes
+    private void handleErrorResponse(HttpResponse<String> response) throws InterruptedException {
+        int status = response.statusCode();
 
+        switch (status) {
+            case 400:
+                throw new RuntimeException(status + " Bad Request: Invalid input.");
+            case 401:
+                throw new RuntimeException(status + " Unauthorized: Authentication Required.");
+            case 403:
+                throw new RuntimeException(status + " Forbidden Access: Access Denied.");
+            case 404:
+                throw new RuntimeException(status + " Not Found: Resource doesn't exist.");
+            case 409:
+                throw new RuntimeException(status + " Conflict: Business rule violation and/or duplicated data.");
+            default:
+                if (status >= 300) {
+                    throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
+                }
+        }
+    }
 }
