@@ -132,23 +132,23 @@ public class ApiClient {
     }
 
     //helper method to handle error responses / get http status codes
-    private void handleErrorResponse(HttpResponse<String> response) throws InterruptedException {
+    private void handleErrorResponse(HttpResponse<String> response) {
         int status = response.statusCode();
 
         switch (status) {
             case 400:
-                throw new RuntimeException(status + " Bad Request: Invalid input.");
+                throw new RuntimeException(status + " Bad Request: Invalid input." + response.body());
             case 401:
-                throw new RuntimeException(status + " Unauthorized: Authentication Required.");
+                throw new RuntimeException(status + " Unauthorized: Authentication Required." + response.body());
             case 403:
-                throw new RuntimeException(status + " Forbidden Access: Access Denied.");
+                throw new RuntimeException(status + " Forbidden Access: Access Denied." + response.body());
             case 404:
-                throw new RuntimeException(status + " Not Found: Resource doesn't exist.");
+                throw new RuntimeException(status + " Not Found: Resource doesn't exist." + response.body());
             case 409:
-                throw new RuntimeException(status + " Conflict: Business rule violation and/or duplicated data.");
+                throw new RuntimeException(status + " Conflict: Business rule violation and/or duplicated data." + response.body());
             default:
-                if (status >= 300) {
-                    throw new RuntimeException("API returned HTTP status: " +  response.statusCode());
+                if (status >= 400) {
+                    throw new RuntimeException("HTTP error " +  response.statusCode() + ": " + response.body());
                 }
         }
     }
