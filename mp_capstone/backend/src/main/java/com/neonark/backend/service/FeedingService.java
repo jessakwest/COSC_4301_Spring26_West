@@ -25,7 +25,7 @@ public class FeedingService {
             throw new BadRequestException("Invalid time format. Use: HH:MM");
         }
 
-        List<FeedingSchedule> schedules = feedingRepository.findByFeedingTimeAndActiveTrue(feedingTime);
+        List<FeedingSchedule> schedules = feedingRepository.findByFeedingTimeAndCreatureRemovedAtIsNull(feedingTime);
 
         return schedules.stream()
                 .map(schedule -> FeedingLookupResponse.builder()

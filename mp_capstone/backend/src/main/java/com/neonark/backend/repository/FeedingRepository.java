@@ -7,6 +7,5 @@ import java.time.LocalTime;
 import java.util.List;
 
 public interface FeedingRepository extends JpaRepository<FeedingSchedule, Long> {
-    List<FeedingSchedule> findByFeedingTimeAndActiveTrue(LocalTime feedingTime);
-
+    List<FeedingSchedule> findByFeedingTimeAndCreatureRemovedAtIsNull(LocalTime feedingTime);
 }
