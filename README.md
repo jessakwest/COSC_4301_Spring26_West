@@ -1,6 +1,6 @@
-# COSC_4301 Spring 2026 – Coursework Repository
+# COSC_4301 Modern Programming – Coursework Repository
 
-This repository contains projects and exercises completed as part of a Spring 2026 software development course.
+This repository contains projects and exercises completed as part of an ACC software development course.
 
 ## Purpose
 
